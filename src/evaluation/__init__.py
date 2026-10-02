@@ -7,6 +7,7 @@ from src.evaluation.evaluate_autoencoder import (
     evaluate_autoencoder_pipeline,
     load_trained_autoencoder,
 )
+from src.evaluation.compare_models import compare_models
 
 __all__ = [
     "compute_reconstruction_scores",
@@ -14,4 +15,5 @@ __all__ = [
     "compute_comprehensive_metrics",
     "evaluate_autoencoder_pipeline",
     "load_trained_autoencoder",
+    "compare_models",
 ]

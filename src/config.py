@@ -149,6 +149,50 @@ class MLPTrainingConfig:
 
 
 @dataclass
+class CNN1DArchitectureConfig:
+    """Architectural parameters for the 1-D CNN classifier.
+
+    1D convolutions over the 30 continuous transaction features (treated as
+    a sequence with C_in=1, L_in=30) to capture local feature correlations.
+    Conv1d -> BatchNorm1d -> ReLU -> Dropout blocks (1 -> 32 -> 64 -> 128),
+    followed by AdaptiveAvgPool1d(1), Linear(128, 32) -> ReLU -> Dropout(0.2),
+    and Linear(32, 1) emitting raw unnormalized logits.
+    """
+
+    input_dim: int = 30
+    channels: List[int] = field(default_factory=lambda: [32, 64, 128])
+    kernel_size: int = 3
+    dropout: float = 0.2
+    dense_dim: int = 32
+
+
+@dataclass
+class CNN1DTrainingConfig:
+    """Hyperparameters and paths for 1-D CNN training.
+
+    Trained on full labelled training set with BCEWithLogitsLoss(pos_weight=518.177).
+    Early stopping and LR scheduling monitor validation PR-AUC.
+    """
+
+    batch_size: int = 512
+    learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
+    num_epochs: int = 40
+    patience: int = 6
+    pos_weight: float = 518.177
+    random_seed: int = 42
+    device: str = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    num_workers: int = 0
+    threshold_metric: str = "f1"
+
+    # Paths
+    model_save_path: Path = MODELS_DIR / "best_cnn1d.pt"
+    metrics_save_path: Path = METRICS_DIR / "cnn1d_metrics.json"
+    history_save_path: Path = LOGS_DIR / "cnn1d_training_history.json"
+    predictions_save_path: Path = METRICS_DIR / "cnn1d_test_predictions.npz"
+
+
+@dataclass
 class ExperimentConfig:
     """Root configuration holding all sub-configs."""
 
@@ -158,6 +202,8 @@ class ExperimentConfig:
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     mlp_model: MLPArchitectureConfig = field(default_factory=MLPArchitectureConfig)
     mlp_training: MLPTrainingConfig = field(default_factory=MLPTrainingConfig)
+    cnn1d_model: CNN1DArchitectureConfig = field(default_factory=CNN1DArchitectureConfig)
+    cnn1d_training: CNN1DTrainingConfig = field(default_factory=CNN1DTrainingConfig)
 
 
 # Default global experiment config
