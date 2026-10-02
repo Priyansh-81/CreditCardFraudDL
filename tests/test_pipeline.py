@@ -41,8 +41,7 @@ from src.evaluation.evaluate_autoencoder import (
 )
 
 
-@pytest.fixture
-def dummy_transaction_df():
+def create_dummy_transaction_df():
     """Create a realistic synthetic transaction DataFrame for testing."""
     np.random.seed(42)
     n_samples = 1000
@@ -65,6 +64,12 @@ def dummy_transaction_df():
     data["Class"] = labels
 
     return pd.DataFrame(data)
+
+
+@pytest.fixture
+def dummy_transaction_df():
+    """Pytest fixture returning dummy transaction DataFrame."""
+    return create_dummy_transaction_df()
 
 
 # 1. Dataset Loading & Missing File Validation
