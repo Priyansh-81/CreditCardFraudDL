@@ -1,0 +1,75 @@
+{
+    "micro_amount_cutoff": 10.0,
+    "high_amount_cutoff": 301.3894999999996,
+    "high_amount_quantile": 0.95,
+    "groups": {
+        "TP": {
+            "count": 34,
+            "amount_mean": 93.43999999999998,
+            "amount_median": 2.4499999999999993,
+            "amount_p90": 218.29999999999993,
+            "amount_max": 1504.93,
+            "share_micro_transactions": 0.6470588235294118,
+            "share_high_amount": 0.08823529411764706,
+            "mean_fraud_probability": 0.9999351957265068
+        },
+        "TN": {
+            "count": 42670,
+            "amount_mean": 72.48691141317086,
+            "amount_median": 16.0,
+            "amount_p90": 168.0,
+            "amount_max": 25691.16,
+            "share_micro_transactions": 0.4097961096789313,
+            "share_high_amount": 0.050011717834544174,
+            "mean_fraud_probability": 0.001746369461714104
+        },
+        "FP": {
+            "count": 0,
+            "amount_mean": null,
+            "amount_median": null,
+            "amount_p90": null,
+            "amount_max": null,
+            "share_micro_transactions": null,
+            "share_high_amount": null,
+            "mean_fraud_probability": null
+        },
+        "FN": {
+            "count": 18,
+            "amount_mean": 166.21777777777777,
+            "amount_median": 27.475,
+            "amount_p90": 440.8550000000002,
+            "amount_max": 1096.99,
+            "share_micro_transactions": 0.3888888888888889,
+            "share_high_amount": 0.16666666666666666,
+            "mean_fraud_probability": 0.30765123746742673
+        }
+    },
+    "findings": {
+        "fn_are_micro_transactions": false,
+        "fp_are_high_amount_outliers": false,
+        "fn_micro_share_vs_tp": [
+            0.3888888888888889,
+            0.6470588235294118
+        ],
+        "fp_high_amount_share_vs_tn": [
+            null,
+            0.050011717834544174
+        ]
+    },
+    "top_pca_shifts_fn_vs_tp": {
+        "V12": 3.025230651395042,
+        "V14": 2.6988006862049936,
+        "V11": -2.3158154628049066,
+        "V10": 2.146862960547374,
+        "V3": 2.0244580044679985
+    },
+    "top_pca_shifts_fp_vs_tn": {},
+    "model": "MLP Baseline",
+    "threshold": 0.9993320107460022,
+    "amount_units": "dollars",
+    "figures": {
+        "confusion_matrix": "D:\\Downloads2\\CreditCardFraudDL\\outputs\\figures\\confusion_matrix.png",
+        "precision_recall_curve": "D:\\Downloads2\\CreditCardFraudDL\\outputs\\figures\\precision_recall_curve.png",
+        "feature_residuals": "D:\\Downloads2\\CreditCardFraudDL\\outputs\\figures\\feature_residuals.png"
+    }
+}

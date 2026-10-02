@@ -88,3 +88,52 @@ def create_dataloaders(
     )
 
     return train_loader, val_loader, test_loader
+
+
+def create_supervised_dataloaders(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    X_test,
+    y_test,
+    batch_size: int = 512,
+    num_workers: int = 0,
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    """Create labelled DataLoaders for supervised models (MLP, 1D-CNN, LSTM).
+
+    Training loader:
+      - Uses the FULL training partition (both classes) with labels
+      - Shuffled across epochs; no oversampling (imbalance handled via pos_weight)
+    Validation & Test loaders:
+      - Retain true labels in sequential order (shuffle=False)
+    """
+    train_dataset = TabularTransactionDataset(X_train, y_train)
+    val_dataset = TabularTransactionDataset(X_val, y_val)
+    test_dataset = TabularTransactionDataset(X_test, y_test)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        drop_last=False,
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        drop_last=False,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        drop_last=False,
+    )
+
+    return train_loader, val_loader, test_loader
