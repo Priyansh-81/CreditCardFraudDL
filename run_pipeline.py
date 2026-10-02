@@ -17,6 +17,7 @@ from src.preprocessing import run_common_preprocessing, check_dataset_exists
 from src.dataset import create_dataloaders, create_supervised_dataloaders
 from src.training.train_autoencoder import train_autoencoder
 from src.training.train_mlp import train_mlp, load_trained_mlp, resolve_device
+from src.training.train_cnn1d import train_cnn1d, load_trained_cnn1d
 from src.evaluation.evaluate_autoencoder import evaluate_autoencoder_pipeline, load_trained_autoencoder
 from src.evaluation.evaluate_supervised import (
     predict_dataloader,
@@ -24,12 +25,13 @@ from src.evaluation.evaluate_supervised import (
     evaluate_test_set,
     save_supervised_metrics,
 )
+from src.evaluation.compare_models import compare_models
 from src.evaluation.error_analysis import run_error_analysis
 from src.utils import setup_logger
 
 logger = setup_logger("MainPipeline")
 
-IMPLEMENTED_MODELS = ["autoencoder", "mlp"]
+IMPLEMENTED_MODELS = ["autoencoder", "mlp", "cnn1d"]
 
 
 def parse_args():
@@ -46,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--stage",
         type=str,
-        choices=["all", "preprocess", "train", "evaluate"],
+        choices=["all", "preprocess", "train", "evaluate", "compare"],
         default="all",
         help="Pipeline stage to execute (default: all)",
     )
@@ -200,11 +202,85 @@ def run_mlp(preprocessed: dict, stage: str) -> None:
         )
 
 
+def run_cnn1d(preprocessed: dict, stage: str) -> None:
+    t_cfg = config.cnn1d_training
+    m_cfg = config.cnn1d_model
+    train_loader, val_loader, test_loader = create_supervised_dataloaders(
+        X_train=preprocessed["X_train"],
+        y_train=preprocessed["y_train"],
+        X_val=preprocessed["X_val"],
+        y_val=preprocessed["y_val"],
+        X_test=preprocessed["X_test"],
+        y_test=preprocessed["y_test"],
+        batch_size=t_cfg.batch_size,
+        num_workers=t_cfg.num_workers,
+    )
+    device = resolve_device(t_cfg.device)
+
+    if stage in ["train", "all"]:
+        logger.info("=== STEP 2: Training 1-D CNN (full labelled training set, pos_weight loss) ===")
+        model, history = train_cnn1d(train_loader, val_loader, config)
+    elif stage == "evaluate":
+        model = load_trained_cnn1d(t_cfg.model_save_path, device)
+
+    if stage in ["evaluate", "all"]:
+        logger.info("=== STEP 3: Selecting Threshold on Validation & Evaluating Test Set ===")
+        model = model.to(device)
+        val_probs, y_val = predict_dataloader(model, val_loader, device)
+        threshold_results = find_optimal_threshold(val_probs, y_val, metric=t_cfg.threshold_metric)
+        threshold = threshold_results["optimal_threshold"]
+
+        test_results = evaluate_test_set(model, test_loader, threshold, device, model_name="1-D CNN")
+        test_probs = test_results.pop("test_probs")
+        y_test = test_results.pop("y_test")
+
+        save_supervised_metrics(
+            {
+                "model": "1-D CNN",
+                "architecture": {
+                    "input_dim": m_cfg.input_dim,
+                    "channels": list(m_cfg.channels),
+                    "kernel_size": m_cfg.kernel_size,
+                    "dropout": m_cfg.dropout,
+                    "dense_dim": m_cfg.dense_dim,
+                },
+                "pos_weight": t_cfg.pos_weight,
+                "validation_selection": threshold_results,
+                "test_metrics": test_results,
+            },
+            t_cfg.metrics_save_path,
+        )
+        np.savez_compressed(
+            t_cfg.predictions_save_path,
+            y_test=y_test,
+            test_probs=test_probs,
+            test_predictions=(test_probs >= threshold).astype(int),
+            threshold=threshold,
+        )
+
+        logger.info("=== STEP 4: Error Analysis & Result Visualizations ===")
+        run_error_analysis(
+            preprocessed["X_test"],
+            y_test,
+            test_probs,
+            threshold,
+            scaler=preprocessed.get("scaler"),
+            model_name="1-D CNN",
+        )
+
+
 def main():
     args = parse_args()
+
+    # Stage: compare alone does not require dataset loading
+    if args.stage == "compare":
+        logger.info("=== STEP: Running Master Cross-Model Comparison Harness ===")
+        compare_models()
+        return
+
     config.preprocessing.raw_data_path = args.raw_path
     config.preprocessing.scaler_type = args.scaler
-    for t_cfg in (config.training, config.mlp_training):
+    for t_cfg in (config.training, config.mlp_training, config.cnn1d_training):
         if args.epochs is not None:
             t_cfg.num_epochs = args.epochs
         if args.batch_size is not None:
@@ -239,6 +315,12 @@ def main():
             run_autoencoder(preprocessed, args.stage)
         elif model_name == "mlp":
             run_mlp(preprocessed, args.stage)
+        elif model_name == "cnn1d":
+            run_cnn1d(preprocessed, args.stage)
+
+    if args.stage in ["evaluate", "all"]:
+        logger.info("=== STEP 5: Updating Master Cross-Model Comparison Table & Curves ===")
+        compare_models()
 
     logger.info("Pipeline completed successfully!")
 

@@ -56,24 +56,28 @@ CreditCardFraudDL/
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── attention_autoencoder.py  # Tabular Transformer Autoencoder
-│   │   └── mlp.py                    # Supervised MLP baseline
+│   │   ├── mlp.py                    # Supervised MLP baseline
+│   │   └── cnn1d.py                  # Supervised 1-D CNN classifier
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── train_autoencoder.py      # Reconstruction training pipeline
-│   │   └── train_mlp.py              # Supervised MLP training (pos_weight BCE)
+│   │   ├── train_mlp.py              # Supervised MLP training (pos_weight BCE)
+│   │   └── train_cnn1d.py            # Supervised 1-D CNN training (pos_weight BCE)
 │   ├── evaluation/
 │   │   ├── __init__.py
 │   │   ├── evaluate_autoencoder.py   # Anomaly scoring and threshold selection
 │   │   ├── evaluate_supervised.py    # Shared evaluation for MLP / 1D-CNN / LSTM
+│   │   ├── compare_models.py         # Master evaluation harness & comparative curves
 │   │   └── error_analysis.py         # FP/FN profiling and report figures
 │   └── utils.py              # Logging, seeding, directory management
 ├── tests/
 │   ├── __init__.py
 │   ├── test_pipeline.py      # 10 unit and integration tests
-│   └── test_mlp.py           # 4 MLP baseline tests
+│   ├── test_mlp.py           # 4 MLP baseline tests
+│   └── test_cnn1d.py         # 4 1-D CNN tests
 ├── outputs/
-│   ├── models/               # Checkpoints (best_attention_autoencoder.pt)
-│   ├── metrics/              # Machine-readable JSON metrics and test scores
+│   ├── models/               # Checkpoints (best_attention_autoencoder.pt, best_mlp.pt, best_cnn1d.pt)
+│   ├── metrics/              # Machine-readable JSON metrics, tables, and test predictions
 │   ├── logs/                 # Training logs and history
 │   └── figures/              # Error-analysis figures (git-ignored)
 ├── run_pipeline.py           # Command-line entrypoint for the full pipeline
@@ -90,6 +94,7 @@ CreditCardFraudDL/
 |---|---|
 | **Priyansh Nandan (230953450)** | **1.** Common preprocessing & chronological split pipeline<br>**2.** Attention-based Autoencoder architecture<br>**3.** Autoencoder training & threshold selection<br>**4.** Output artifacts for final model comparison |
 | **Pranav Kasliwal (230911284)** | **1.** MLP baseline & supervised dataloader/evaluation harness<br>**2.** Error analysis across models<br>**3.** Comparative result visualisations |
+| **Atharv Sharma (230953210)** | **1.** 1-D Convolutional Neural Network (1-D CNN) architecture & training pipeline<br>**2.** Master evaluation harness & consolidated comparison table (`outputs/metrics/comparison_table.md`)<br>**3.** Comparative PR and ROC curve visualizations (`outputs/metrics/comparative_pr_curves.png`, `comparative_roc_curves.png`) |
 
 ---
 
@@ -222,13 +227,18 @@ python run_pipeline.py --stage evaluate
 
 # Select the model with --model (autoencoder | mlp | cnn1d | lstm | all; default: autoencoder)
 python run_pipeline.py --model mlp --stage all
+python run_pipeline.py --model cnn1d --stage all
+
+# Run Master Cross-Model Comparison Harness alone
+python run_pipeline.py --stage compare
+# or directly:
+python src/evaluation/compare_models.py
 ```
 
-The MLP baseline (30 -> 128 -> 64 -> 32 -> 1, BatchNorm + ReLU + Dropout 0.3) trains on the full
-labelled training partition with `BCEWithLogitsLoss(pos_weight = 198980 / 384 ≈ 518.18)` instead of
-resampling, uses AdamW (lr 1e-3, weight decay 1e-4) with `ReduceLROnPlateau` on validation PR-AUC, and
-early-stops on validation PR-AUC (patience 6). The decision threshold maximizes F1 on the validation
-PR curve and is applied once to the test set.
+The supervised models (MLP and 1-D CNN) train on the full labelled training partition with
+`BCEWithLogitsLoss(pos_weight = 198980 / 384 ≈ 518.18)` instead of resampling, use AdamW (lr 1e-3, weight decay 1e-4)
+with `ReduceLROnPlateau` on validation PR-AUC, and early-stop on validation PR-AUC (patience 6).
+The decision threshold maximizes F1 on the validation PR curve and is applied once to the test set.
 
 ---
 
@@ -238,19 +248,7 @@ Upon execution, the following artifacts are produced:
 - `outputs/models/best_attention_autoencoder.pt`: PyTorch checkpoint of the best model.
 - `outputs/logs/training_history.json`: Epoch-wise train and validation loss history.
 - `outputs/metrics/attention_autoencoder_metrics.json`: Complete validation selection diagnostics and test set metrics.
-- `outputs/metrics/model_comparison_entry.json`: Machine-readable summary for comparison across all 4 architectures:
-  ```json
-  {
-      "model": "Attention Autoencoder",
-      "pr_auc": null,
-      "roc_auc": null,
-      "accuracy": null,
-      "precision": null,
-      "recall": null,
-      "f1": null,
-      "threshold": null
-  }
-  ```
+- `outputs/metrics/model_comparison_entry.json`: Machine-readable summary for comparison across all 4 architectures.
 - `outputs/metrics/test_predictions.npz`: Test sample anomaly scores, ground-truth labels, and binary predictions.
 
 MLP baseline (`--model mlp`):
@@ -260,3 +258,15 @@ MLP baseline (`--model mlp`):
 - `outputs/metrics/mlp_test_predictions.npz`: Test probabilities, labels, and binary predictions.
 - `outputs/metrics/error_analysis_summary.json`: TP/TN/FP/FN profiles (Amount, PCA feature shifts).
 - `outputs/figures/confusion_matrix.png`, `precision_recall_curve.png`, `feature_residuals.png`.
+
+1-D CNN (`--model cnn1d`):
+- `outputs/models/best_cnn1d.pt`: Best checkpoint by validation PR-AUC.
+- `outputs/logs/cnn1d_training_history.json`: Per-epoch train loss, validation PR-AUC / F1 and learning rate.
+- `outputs/metrics/cnn1d_metrics.json`: Validation threshold selection and held-out test metrics.
+- `outputs/metrics/cnn1d_test_predictions.npz`: Test probabilities, labels, and binary predictions.
+
+Master Comparison Harness (`--stage compare` or `compare_models.py`):
+- `outputs/metrics/comparison_table.md`: Consolidated Markdown table of all evaluated models.
+- `outputs/metrics/consolidated_model_comparison.json`: Structured JSON summary of all model evaluations.
+- `outputs/metrics/comparative_pr_curves.png`: Overlay Precision-Recall curves with PR-AUC scores.
+- `outputs/metrics/comparative_roc_curves.png`: Overlay Receiver Operating Characteristic curves with ROC-AUC scores.

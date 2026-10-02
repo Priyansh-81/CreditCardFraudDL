@@ -1,0 +1,92 @@
+{
+    "generated_at": "2026-10-02T22:38:03.048502",
+    "primary_metric": "pr_auc",
+    "dataset_split": {
+        "protocol": "Chronological (70/15/15)",
+        "test_sample_count": 42722,
+        "test_fraud_count": 52,
+        "test_fraud_percentage": 0.121717
+    },
+    "ranking_by_pr_auc": [
+        "MLP Baseline",
+        "1-D CNN",
+        "Attention Autoencoder"
+    ],
+    "models": [
+        {
+            "family": "Supervised Feed-Forward (MLP)",
+            "model_name": "MLP Baseline",
+            "pr_auc": 0.7750502860666315,
+            "roc_auc": 0.9547263434947991,
+            "f1": 0.7906976744186046,
+            "precision": 1.0,
+            "recall": 0.6538461538461539,
+            "threshold": 0.9993320107460022,
+            "accuracy": 0.9995786714105145,
+            "confusion_matrix": [
+                [
+                    42670,
+                    0
+                ],
+                [
+                    18,
+                    34
+                ]
+            ],
+            "prediction_file": "mlp_test_predictions.npz",
+            "score_key": "test_probs",
+            "color": "#ff7f0e",
+            "line_style": "--"
+        },
+        {
+            "family": "Supervised 1-D CNN",
+            "model_name": "1-D CNN",
+            "pr_auc": 0.7272184239961454,
+            "roc_auc": 0.9686273007517441,
+            "f1": 0.7272727272727273,
+            "precision": 0.8888888888888888,
+            "recall": 0.6153846153846154,
+            "threshold": 0.9948415160179138,
+            "accuracy": 0.9994382285473526,
+            "confusion_matrix": [
+                [
+                    42666,
+                    4
+                ],
+                [
+                    20,
+                    32
+                ]
+            ],
+            "prediction_file": "cnn1d_test_predictions.npz",
+            "score_key": "test_probs",
+            "color": "#2ca02c",
+            "line_style": "-."
+        },
+        {
+            "family": "Attention Autoencoder",
+            "model_name": "Attention Autoencoder",
+            "pr_auc": 0.197769703922644,
+            "roc_auc": 0.9049805303672189,
+            "f1": 0.3620689655172414,
+            "precision": 0.328125,
+            "recall": 0.40384615384615385,
+            "threshold": 2.00784969329834,
+            "accuracy": 0.9982678713543374,
+            "confusion_matrix": [
+                [
+                    42627,
+                    43
+                ],
+                [
+                    31,
+                    21
+                ]
+            ],
+            "prediction_file": "test_predictions.npz",
+            "score_key": "test_scores",
+            "color": "#1f77b4",
+            "line_style": "-"
+        }
+    ]
+}

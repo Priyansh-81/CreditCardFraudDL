@@ -1,0 +1,43 @@
+{
+    "model": "1-D CNN",
+    "architecture": {
+        "input_dim": 30,
+        "channels": [
+            32,
+            64,
+            128
+        ],
+        "kernel_size": 3,
+        "dropout": 0.2,
+        "dense_dim": 32
+    },
+    "pos_weight": 518.177,
+    "validation_selection": {
+        "optimal_threshold": 0.9948415160179138,
+        "criterion": "f1",
+        "val_f1": 0.8080808080808081,
+        "val_precision": 0.9302325581395349,
+        "val_recall": 0.7142857142857143,
+        "val_pr_auc": 0.7869419688193982,
+        "val_roc_auc": 0.9621536555557416
+    },
+    "test_metrics": {
+        "pr_auc": 0.7272184239961454,
+        "roc_auc": 0.9686273007517441,
+        "accuracy": 0.9994382285473526,
+        "precision": 0.8888888888888888,
+        "recall": 0.6153846153846154,
+        "f1": 0.7272727272727273,
+        "threshold": 0.9948415160179138,
+        "confusion_matrix": [
+            [
+                42666,
+                4
+            ],
+            [
+                20,
+                32
+            ]
+        ]
+    }
+}
