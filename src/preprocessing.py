@@ -291,3 +291,194 @@ def prepare_features_and_targets(
 
     return X_train, y_train, X_val, y_val, X_test, y_test
 
+
+def scale_features(
+    X_train: pd.DataFrame,
+    X_val: pd.DataFrame,
+    X_test: pd.DataFrame,
+    scaler_type: str = "robust",
+    scaler_save_path: Path = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Any]:
+    """Fit feature scaler STRICTLY on training data and transform all partitions.
+
+    CRITICAL LEAKAGE PREVENTION:
+    The scaler is fitted ONLY on X_train. X_val and X_test are transformed using
+    the training-fitted parameters and must NEVER influence scaler fitting.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame
+        Training feature matrix.
+    X_val : pd.DataFrame
+        Validation feature matrix.
+    X_test : pd.DataFrame
+        Held-out test feature matrix.
+    scaler_type : str
+        'robust' (sklearn.preprocessing.RobustScaler) or 'standard' (StandardScaler).
+    scaler_save_path : Path, optional
+        Filepath to persist the fitted scaler using joblib.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Any]
+        (X_train_scaled, X_val_scaled, X_test_scaled, fitted_scaler)
+    """
+    import joblib
+    from sklearn.preprocessing import RobustScaler, StandardScaler
+
+    if scaler_type == "robust":
+        scaler = RobustScaler()
+    elif scaler_type == "standard":
+        scaler = StandardScaler()
+    else:
+        raise ValueError(f"Unsupported scaler_type '{scaler_type}'. Choose 'robust' or 'standard'.")
+
+    logger.info(f"Fitting {scaler.__class__.__name__} STRICTLY on X_train ({len(X_train):,} samples) ...")
+    # Fit strictly on train
+    scaler.fit(X_train)
+
+    # Transform each partition
+    X_train_scaled_arr = scaler.transform(X_train)
+    X_val_scaled_arr = scaler.transform(X_val)
+    X_test_scaled_arr = scaler.transform(X_test)
+
+    # Wrap back into DataFrames with original column names
+    X_train_scaled = pd.DataFrame(X_train_scaled_arr, columns=X_train.columns, index=X_train.index)
+    X_val_scaled = pd.DataFrame(X_val_scaled_arr, columns=X_val.columns, index=X_val.index)
+    X_test_scaled = pd.DataFrame(X_test_scaled_arr, columns=X_test.columns, index=X_test.index)
+
+    # Sanity checks for data leakage
+    _verify_scaling_leakage_absence(X_train_scaled, X_val_scaled, scaler_type)
+
+    if scaler_save_path:
+        scaler_save_path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(scaler, scaler_save_path)
+        logger.info(f"Fitted scaler saved to {scaler_save_path}")
+
+    return X_train_scaled, X_val_scaled, X_test_scaled, scaler
+
+
+def _verify_scaling_leakage_absence(
+    X_train_scaled: pd.DataFrame, X_val_scaled: pd.DataFrame, scaler_type: str
+) -> None:
+    """Verify that validation data was not used during scaler fitting."""
+    if scaler_type == "standard":
+        train_mean = X_train_scaled.mean().values
+        val_mean = X_val_scaled.mean().values
+        # Train means should be ~0, val means should not be identically 0
+        assert abs(train_mean.mean()) < 1e-4, "Train scaled mean is not ~0 under StandardScaler"
+    logger.info("Scaling verification passed: Scaler was fitted strictly on X_train.")
+
+
+def get_autoencoder_training_subset(
+    X_train: pd.DataFrame, y_train: pd.Series
+) -> pd.DataFrame:
+    """Extract legitimate transactions (Class == 0) for Autoencoder reconstruction training.
+
+    Per Phase 1 methodology:
+    The Autoencoder learns the manifold of legitimate transactions only.
+    Fraudulent transactions in the training partition are discarded from training,
+    while validation and test partitions retain both classes for evaluation.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame
+        Training features.
+    y_train : pd.Series
+        Training labels (0 = legitimate, 1 = fraud).
+
+    Returns
+    -------
+    pd.DataFrame
+        Legitimate training samples only.
+    """
+    legit_mask = (y_train == 0)
+    X_train_legit = X_train[legit_mask].copy().reset_index(drop=True)
+
+    num_total = len(X_train)
+    num_legit = len(X_train_legit)
+    num_excluded_fraud = num_total - num_legit
+
+    logger.info(
+        f"Autoencoder training subset prepared:\n"
+        f"  Total training samples:         {num_total:,}\n"
+        f"  Legitimate training samples:    {num_legit:,} (used for reconstruction training)\n"
+        f"  Excluded training fraud:        {num_excluded_fraud:,} (fraud NEVER shown to autoencoder during training)"
+    )
+    return X_train_legit
+
+
+def run_common_preprocessing(
+    cfg: PreprocessingConfig = None,
+) -> Dict[str, Any]:
+    """Execute the complete end-to-end common preprocessing pipeline.
+
+    Produces:
+    - Chronologically split train, val, test partitions
+    - Scaler fitted only on train
+    - Scaled feature matrices
+    - Autoencoder training subset (Class == 0 only)
+    - Saved scaler artifact
+    """
+    import numpy as np
+
+    if cfg is None:
+        cfg = config.preprocessing
+
+    df_raw = load_raw_data(cfg.raw_data_path)
+    inspect_data(df_raw)
+
+    df_train, df_val, df_test, partition_stats = chronological_split(
+        df_raw,
+        train_ratio=cfg.train_ratio,
+        val_ratio=cfg.val_ratio,
+        test_ratio=cfg.test_ratio,
+    )
+
+    X_train, y_train, X_val, y_val, X_test, y_test = prepare_features_and_targets(
+        df_train, df_val, df_test
+    )
+
+    scaler_path = cfg.processed_dir / f"{cfg.scaler_type}_scaler.joblib"
+    X_train_scaled, X_val_scaled, X_test_scaled, fitted_scaler = scale_features(
+        X_train,
+        X_val,
+        X_test,
+        scaler_type=cfg.scaler_type,
+        scaler_save_path=scaler_path,
+    )
+
+    X_train_legit = get_autoencoder_training_subset(X_train_scaled, y_train)
+
+    # Save processed splits as numpy compressed arrays for fast access
+    cfg.processed_dir.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cfg.processed_dir / "processed_splits.npz",
+        X_train=X_train_scaled.values,
+        y_train=y_train.values,
+        X_val=X_val_scaled.values,
+        y_val=y_val.values,
+        X_test=X_test_scaled.values,
+        y_test=y_test.values,
+        X_train_legit=X_train_legit.values,
+        feature_names=np.array(FEATURE_COLUMNS),
+    )
+    logger.info(f"Processed datasets saved to {cfg.processed_dir / 'processed_splits.npz'}")
+
+    return {
+        "X_train": X_train_scaled,
+        "y_train": y_train,
+        "X_val": X_val_scaled,
+        "y_val": y_val,
+        "X_test": X_test_scaled,
+        "y_test": y_test,
+        "X_train_legit": X_train_legit,
+        "scaler": fitted_scaler,
+        "partition_stats": partition_stats,
+    }
+
+
+if __name__ == "__main__":
+    run_common_preprocessing()
+
+
