@@ -154,7 +154,7 @@ def train_autoencoder(
         weight_decay=t_cfg.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=2, verbose=True
+        optimizer, mode="min", factor=0.5, patience=2
     )
     early_stopping = EarlyStopping(patience=t_cfg.patience)
 

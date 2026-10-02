@@ -1,0 +1,37 @@
+{
+    "model": "Attention Autoencoder",
+    "architecture": {
+        "num_encoder_layers": 2,
+        "nhead": 4,
+        "bottleneck_dim": 8,
+        "d_model": 32
+    },
+    "validation_selection": {
+        "optimal_threshold": 3.168917417526245,
+        "criterion": "f1",
+        "val_f1": 0.2787878787878788,
+        "val_precision": 0.21100917431192662,
+        "val_recall": 0.4107142857142857,
+        "val_pr_auc": 0.1208677549280461,
+        "val_roc_auc": 0.961794545545864
+    },
+    "test_metrics": {
+        "pr_auc": 0.19511288146898073,
+        "roc_auc": 0.904783580609688,
+        "accuracy": 0.9982678713543374,
+        "precision": 0.328125,
+        "recall": 0.40384615384615385,
+        "f1": 0.3620689655172414,
+        "threshold": 3.168917417526245,
+        "confusion_matrix": [
+            [
+                42627,
+                43
+            ],
+            [
+                31,
+                21
+            ]
+        ]
+    }
+}
