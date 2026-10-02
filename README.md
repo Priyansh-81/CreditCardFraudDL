@@ -55,21 +55,27 @@ CreditCardFraudDL/
 │   ├── dataset.py            # PyTorch Dataset and DataLoader abstractions
 │   ├── models/
 │   │   ├── __init__.py
-│   │   └── attention_autoencoder.py  # Tabular Transformer Autoencoder
+│   │   ├── attention_autoencoder.py  # Tabular Transformer Autoencoder
+│   │   └── mlp.py                    # Supervised MLP baseline
 │   ├── training/
 │   │   ├── __init__.py
-│   │   └── train_autoencoder.py      # Reconstruction training pipeline
+│   │   ├── train_autoencoder.py      # Reconstruction training pipeline
+│   │   └── train_mlp.py              # Supervised MLP training (pos_weight BCE)
 │   ├── evaluation/
 │   │   ├── __init__.py
-│   │   └── evaluate_autoencoder.py   # Anomaly scoring and threshold selection
+│   │   ├── evaluate_autoencoder.py   # Anomaly scoring and threshold selection
+│   │   ├── evaluate_supervised.py    # Shared evaluation for MLP / 1D-CNN / LSTM
+│   │   └── error_analysis.py         # FP/FN profiling and report figures
 │   └── utils.py              # Logging, seeding, directory management
 ├── tests/
 │   ├── __init__.py
-│   └── test_pipeline.py      # 10 unit and integration tests
+│   ├── test_pipeline.py      # 10 unit and integration tests
+│   └── test_mlp.py           # 4 MLP baseline tests
 ├── outputs/
 │   ├── models/               # Checkpoints (best_attention_autoencoder.pt)
 │   ├── metrics/              # Machine-readable JSON metrics and test scores
-│   └── logs/                 # Training logs and history
+│   ├── logs/                 # Training logs and history
+│   └── figures/              # Error-analysis figures (git-ignored)
 ├── run_pipeline.py           # Command-line entrypoint for the full pipeline
 ├── requirements.txt          # Python dependencies
 ├── README.md                 # Project documentation
@@ -83,7 +89,7 @@ CreditCardFraudDL/
 | Contributor | Primary Responsibilities |
 |---|---|
 | **Priyansh Nandan (230953450)** | **1.** Common preprocessing & chronological split pipeline<br>**2.** Attention-based Autoencoder architecture<br>**3.** Autoencoder training & threshold selection<br>**4.** Output artifacts for final model comparison |
-| **Pranav** | **1.** Error analysis across models<br>**2.** Comparative result visualisations |
+| **Pranav Kasliwal (230911284)** | **1.** MLP baseline & supervised dataloader/evaluation harness<br>**2.** Error analysis across models<br>**3.** Comparative result visualisations |
 
 ---
 
@@ -213,7 +219,16 @@ python run_pipeline.py --stage all
 python run_pipeline.py --stage preprocess
 python run_pipeline.py --stage train --epochs 40 --batch-size 512
 python run_pipeline.py --stage evaluate
+
+# Select the model with --model (autoencoder | mlp | cnn1d | lstm | all; default: autoencoder)
+python run_pipeline.py --model mlp --stage all
 ```
+
+The MLP baseline (30 -> 128 -> 64 -> 32 -> 1, BatchNorm + ReLU + Dropout 0.3) trains on the full
+labelled training partition with `BCEWithLogitsLoss(pos_weight = 198980 / 384 ≈ 518.18)` instead of
+resampling, uses AdamW (lr 1e-3, weight decay 1e-4) with `ReduceLROnPlateau` on validation PR-AUC, and
+early-stops on validation PR-AUC (patience 6). The decision threshold maximizes F1 on the validation
+PR curve and is applied once to the test set.
 
 ---
 
@@ -237,3 +252,11 @@ Upon execution, the following artifacts are produced:
   }
   ```
 - `outputs/metrics/test_predictions.npz`: Test sample anomaly scores, ground-truth labels, and binary predictions.
+
+MLP baseline (`--model mlp`):
+- `outputs/models/best_mlp.pt`: Best checkpoint by validation PR-AUC.
+- `outputs/logs/mlp_training_history.json`: Per-epoch train loss, validation PR-AUC / F1 and learning rate.
+- `outputs/metrics/mlp_metrics.json`: Validation threshold selection and held-out test metrics.
+- `outputs/metrics/mlp_test_predictions.npz`: Test probabilities, labels, and binary predictions.
+- `outputs/metrics/error_analysis_summary.json`: TP/TN/FP/FN profiles (Amount, PCA feature shifts).
+- `outputs/figures/confusion_matrix.png`, `precision_recall_curve.png`, `feature_residuals.png`.

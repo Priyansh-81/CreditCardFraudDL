@@ -19,6 +19,7 @@ OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 MODELS_DIR = OUTPUTS_DIR / "models"
 METRICS_DIR = OUTPUTS_DIR / "metrics"
 LOGS_DIR = OUTPUTS_DIR / "logs"
+FIGURES_DIR = OUTPUTS_DIR / "figures"
 
 # Expected raw dataset path
 RAW_DATASET_PATH = RAW_DATA_DIR / "creditcard.csv"
@@ -108,6 +109,46 @@ class EvaluationConfig:
 
 
 @dataclass
+class MLPArchitectureConfig:
+    """Architectural parameters for the supervised MLP baseline.
+
+    Linear -> BatchNorm1d -> ReLU -> Dropout blocks (30 -> 128 -> 64 -> 32),
+    followed by a Linear(32 -> 1) head emitting a raw logit.
+    """
+
+    input_dim: int = 30
+    hidden_dims: List[int] = field(default_factory=lambda: [128, 64, 32])
+    dropout: float = 0.3
+    use_batch_norm: bool = True
+
+
+@dataclass
+class MLPTrainingConfig:
+    """Hyperparameters and paths for supervised MLP training.
+
+    Class imbalance is handled by loss reweighting (pos_weight), never by
+    resampling, so predicted posteriors stay calibrated to the true prior.
+    """
+
+    batch_size: int = 512
+    learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
+    num_epochs: int = 40
+    patience: int = 6  # Early stopping patience on validation PR-AUC
+    pos_weight: float = 518.177  # 198980 / 384 (train legit / train fraud)
+    random_seed: int = 42
+    device: str = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    num_workers: int = 0
+    threshold_metric: str = "f1"
+
+    # Paths
+    model_save_path: Path = MODELS_DIR / "best_mlp.pt"
+    metrics_save_path: Path = METRICS_DIR / "mlp_metrics.json"
+    history_save_path: Path = LOGS_DIR / "mlp_training_history.json"
+    predictions_save_path: Path = METRICS_DIR / "mlp_test_predictions.npz"
+
+
+@dataclass
 class ExperimentConfig:
     """Root configuration holding all sub-configs."""
 
@@ -115,6 +156,8 @@ class ExperimentConfig:
     model: AutoencoderArchitectureConfig = field(default_factory=AutoencoderArchitectureConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    mlp_model: MLPArchitectureConfig = field(default_factory=MLPArchitectureConfig)
+    mlp_training: MLPTrainingConfig = field(default_factory=MLPTrainingConfig)
 
 
 # Default global experiment config
