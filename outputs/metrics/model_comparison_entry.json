@@ -1,0 +1,10 @@
+{
+    "model": "Attention Autoencoder",
+    "pr_auc": null,
+    "roc_auc": null,
+    "accuracy": null,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "threshold": null
+}
