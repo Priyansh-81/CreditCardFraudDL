@@ -102,7 +102,8 @@ class EvaluationConfig:
     metrics_save_path: Path = METRICS_DIR / "attention_autoencoder_metrics.json"
     predictions_save_path: Path = METRICS_DIR / "test_predictions.npz"
     comparison_summary_path: Path = METRICS_DIR / "model_comparison_entry.json"
-    threshold_metric: str = "f1"  # Criterion on validation set to pick threshold
+    threshold_metric: str = "f1"  # Criterion on validation set: "f1", "f2", "recall_70", "recall_80"
+    score_type: str = "hybrid"  # "hybrid" (MSE+MAE), "mse", or "mae"
     num_threshold_steps: int = 500
 
 

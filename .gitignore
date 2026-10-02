@@ -56,3 +56,7 @@ outputs/models/*.pt
 outputs/models/*.pth
 outputs/models/*.joblib
 outputs/logs/
+outputs/figures/
+
+# Local agent task documentation
+docs/
