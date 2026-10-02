@@ -1,0 +1,29 @@
+{
+    "train": {
+        "partition_name": "Train",
+        "sample_count": 199364,
+        "legit_count": 198980,
+        "fraud_count": 384,
+        "fraud_percentage": 0.19261250777472363,
+        "time_min": 0.0,
+        "time_max": 132928.0
+    },
+    "val": {
+        "partition_name": "Validation",
+        "sample_count": 42721,
+        "legit_count": 42665,
+        "fraud_count": 56,
+        "fraud_percentage": 0.1310830738980829,
+        "time_min": 132929.0,
+        "time_max": 151328.0
+    },
+    "test": {
+        "partition_name": "Test",
+        "sample_count": 42722,
+        "legit_count": 42670,
+        "fraud_count": 52,
+        "fraud_percentage": 0.12171714807359206,
+        "time_min": 151328.0,
+        "time_max": 172792.0
+    }
+}

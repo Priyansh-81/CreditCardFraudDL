@@ -48,6 +48,8 @@ data/raw/*.zip
 data/processed/*.npz
 data/processed/*.pkl
 data/processed/*.parquet
+data/processed/*.csv
+data/processed/*.joblib
 
 # Model checkpoints & outputs
 outputs/models/*.pt

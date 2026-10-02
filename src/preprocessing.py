@@ -450,10 +450,12 @@ def run_common_preprocessing(
 
     X_train_legit = get_autoencoder_training_subset(X_train_scaled, y_train)
 
-    # Save processed splits as numpy compressed arrays for fast access
     cfg.processed_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Save fast compressed numpy format (.npz)
+    npz_path = cfg.processed_dir / "processed_splits.npz"
     np.savez_compressed(
-        cfg.processed_dir / "processed_splits.npz",
+        npz_path,
         X_train=X_train_scaled.values,
         y_train=y_train.values,
         X_val=X_val_scaled.values,
@@ -463,7 +465,37 @@ def run_common_preprocessing(
         X_train_legit=X_train_legit.values,
         feature_names=np.array(FEATURE_COLUMNS),
     )
-    logger.info(f"Processed datasets saved to {cfg.processed_dir / 'processed_splits.npz'}")
+    logger.info(f"Compressed numpy splits saved to: {npz_path}")
+
+    # 2. Save CSV format with Target column appended (for common team usage across MLP, CNN, LSTM)
+    train_df = X_train_scaled.copy()
+    train_df[TARGET_COLUMN] = y_train.values
+    train_csv_path = cfg.processed_dir / "train_scaled.csv"
+    train_df.to_csv(train_csv_path, index=False)
+
+    val_df = X_val_scaled.copy()
+    val_df[TARGET_COLUMN] = y_val.values
+    val_csv_path = cfg.processed_dir / "val_scaled.csv"
+    val_df.to_csv(val_csv_path, index=False)
+
+    test_df = X_test_scaled.copy()
+    test_df[TARGET_COLUMN] = y_test.values
+    test_csv_path = cfg.processed_dir / "test_scaled.csv"
+    test_df.to_csv(test_csv_path, index=False)
+
+    # Autoencoder-specific legitimate training set (Class == 0 only)
+    train_legit_df = X_train_legit.copy()
+    train_legit_df[TARGET_COLUMN] = 0
+    train_legit_csv_path = cfg.processed_dir / "train_legit_scaled.csv"
+    train_legit_df.to_csv(train_legit_csv_path, index=False)
+
+    logger.info(f"Standard CSV splits saved to: {cfg.processed_dir}")
+
+    # 3. Save partition metadata JSON
+    from src.utils import save_json
+    metadata_path = cfg.processed_dir / "partition_metadata.json"
+    save_json(partition_stats, metadata_path)
+    logger.info(f"Partition metadata saved to: {metadata_path}")
 
     return {
         "X_train": X_train_scaled,
