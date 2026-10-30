@@ -208,6 +208,20 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Windows Setup (PowerShell)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+### Windows Setup (Git Bash)
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+```
+
 ### Run Tests
 The test suite includes 10 unit and integration tests verifying dataset validation, chronological split integrity, zero leakage, scaling correctness, autoencoder forward pass, output shapes, and threshold application:
 ```bash
