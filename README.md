@@ -2,7 +2,11 @@
 
 **Course:** ICT-4442 Deep Learning  
 **Institution:** Manipal Institute of Technology  
-**Student:** Priyansh Nandan (Reg No: 230953450)  
+**Project Group Members:**
+- **Priyansh Nandan (230953450)** — Common Preprocessing Pipeline & Attention-Based Autoencoder
+- **Pranav Kasliwal (230911284)** — Supervised Feedforward MLP Baseline & Error Profiling
+- **Atharv Sharma (230953210)** — Supervised 1-D CNN Classifier & Master Comparison Harness
+- **Yash** — Supervised Recurrent Neural Network (LSTM) Classifier
 
 ---
 
@@ -57,12 +61,14 @@ CreditCardFraudDL/
 │   │   ├── __init__.py
 │   │   ├── attention_autoencoder.py  # Tabular Transformer Autoencoder
 │   │   ├── mlp.py                    # Supervised MLP baseline
-│   │   └── cnn1d.py                  # Supervised 1-D CNN classifier
+│   │   ├── cnn1d.py                  # Supervised 1-D CNN classifier
+│   │   └── lstm.py                   # Supervised Recurrent (LSTM) classifier
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── train_autoencoder.py      # Reconstruction training pipeline
 │   │   ├── train_mlp.py              # Supervised MLP training (pos_weight BCE)
-│   │   └── train_cnn1d.py            # Supervised 1-D CNN training (pos_weight BCE)
+│   │   ├── train_cnn1d.py            # Supervised 1-D CNN training (pos_weight BCE)
+│   │   └── train_lstm.py             # Supervised LSTM training (pos_weight BCE)
 │   ├── evaluation/
 │   │   ├── __init__.py
 │   │   ├── evaluate_autoencoder.py   # Anomaly scoring and threshold selection
@@ -74,9 +80,10 @@ CreditCardFraudDL/
 │   ├── __init__.py
 │   ├── test_pipeline.py      # 10 unit and integration tests
 │   ├── test_mlp.py           # 4 MLP baseline tests
-│   └── test_cnn1d.py         # 4 1-D CNN tests
+│   ├── test_cnn1d.py         # 4 1-D CNN tests
+│   └── test_lstm.py          # Recurrent LSTM architecture tests
 ├── outputs/
-│   ├── models/               # Checkpoints (best_attention_autoencoder.pt, best_mlp.pt, best_cnn1d.pt)
+│   ├── models/               # Checkpoints (best_attention_autoencoder.pt, best_mlp.pt, best_cnn1d.pt, best_lstm.pt)
 │   ├── metrics/              # Machine-readable JSON metrics, tables, and test predictions
 │   ├── logs/                 # Training logs and history
 │   └── figures/              # Error-analysis figures (git-ignored)
@@ -95,6 +102,7 @@ CreditCardFraudDL/
 | **Priyansh Nandan (230953450)** | **1.** Common preprocessing & chronological split pipeline<br>**2.** Attention-based Autoencoder architecture<br>**3.** Autoencoder training & threshold selection<br>**4.** Output artifacts for final model comparison |
 | **Pranav Kasliwal (230911284)** | **1.** MLP baseline & supervised dataloader/evaluation harness<br>**2.** Error analysis across models<br>**3.** Comparative result visualisations |
 | **Atharv Sharma (230953210)** | **1.** 1-D Convolutional Neural Network (1-D CNN) architecture & training pipeline<br>**2.** Master evaluation harness & consolidated comparison table (`outputs/metrics/comparison_table.md`)<br>**3.** Comparative PR and ROC curve visualizations (`outputs/metrics/comparative_pr_curves.png`, `comparative_roc_curves.png`) |
+| **Yash** | **1.** Long Short-Term Memory (LSTM) recurrent neural network architecture & temporal sequence formulation<br>**2.** Sequential hidden state tracking, memory cell gating & recurrent feature modeling<br>**3.** Supervised LSTM model training with positive class re-weighting (`pos_weight ≈ 518.18`) & validation PR-AUC early stopping<br>**4.** Temporal fraud dependency analysis & comparative benchmarking against Feed-Forward (MLP) and Spatial (1-D CNN) baselines |
 
 ---
 
@@ -279,8 +287,64 @@ MLP baseline (`--model mlp`):
 - `outputs/metrics/cnn1d_metrics.json`: Validation threshold selection and held-out test metrics.
 - `outputs/metrics/cnn1d_test_predictions.npz`: Test probabilities, labels, and binary predictions.
 
+LSTM (`--model lstm`):
+- `outputs/models/best_lstm.pt`: Best checkpoint by validation PR-AUC.
+- `outputs/logs/lstm_training_history.json`: Per-epoch train loss, validation PR-AUC / F1 and learning rate.
+- `outputs/metrics/lstm_metrics.json`: Validation threshold selection and held-out test metrics.
+- `outputs/metrics/lstm_test_predictions.npz`: Test probabilities, labels, and binary predictions.
+
 Master Comparison Harness (`--stage compare` or `compare_models.py`):
 - `outputs/metrics/comparison_table.md`: Consolidated Markdown table of all evaluated models.
 - `outputs/metrics/consolidated_model_comparison.json`: Structured JSON summary of all model evaluations.
 - `outputs/metrics/comparative_pr_curves.png`: Overlay Precision-Recall curves with PR-AUC scores.
 - `outputs/metrics/comparative_roc_curves.png`: Overlay Receiver Operating Characteristic curves with ROC-AUC scores.
+
+---
+
+## 11. Recurrent Architecture Specification & Yash's Presentation Guide
+
+### 11.1 Architectural Rationale (Why LSTM?)
+While the MLP baseline treats tabular transactions as independent, isolated vectors and the 1-D CNN models localized spatial feature correlations, the **Long Short-Term Memory (LSTM)** network is designed to model **sequential temporal dependencies**:
+- **Fraud Velocity & Burst Dynamics**: Real-world financial fraud often involves rapid successive card authorizations, micro-testing trials, and abrupt spending surges across chronological windows.
+- **Hidden State Trajectory**: An LSTM maintains a continuous hidden state $h_t$ and memory cell state $c_t$ across transactions:
+  $$f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f) \quad \text{(Forget Gate)}$$
+  $$i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i) \quad \text{(Input Gate)}$$
+  $$\tilde{c}_t = \tanh(W_c x_t + U_c h_{t-1} + b_c) \quad \text{(Candidate Cell State)}$$
+  $$c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t \quad \text{(Updated Cell Memory)}$$
+  $$o_t = \sigma(W_o x_t + U_o h_{t-1} + b_o) \quad \text{(Output Gate)}$$
+  $$h_t = o_t \odot \tanh(c_t) \quad \text{(Hidden State Vector)}$$
+- **Classification Head**: The final hidden state $h_T$ passes through a dropout-regularized dense layer to produce the fraud logit:
+  $$\hat{y} = \sigma(W_{\text{out}} h_T + b_{\text{out}})$$
+- **Supervised Imbalance Loss**:
+  $$\mathcal{L}_{\text{BCE}}(y, \hat{p}) = -\left[ w_{\text{pos}} \cdot y \log(\hat{p}) + (1 - y) \log(1 - \hat{p}) \right], \quad w_{\text{pos}} = \frac{N_{\text{legit}}}{N_{\text{fraud}}} \approx 518.18$$
+
+---
+
+### 11.2 What Yash is Supposed to Present (Slide-by-Slide & Viva Guide)
+
+During the group presentation and viva defense, Yash is responsible for presenting the **recurrent temporal modeling** perspective of the project:
+
+#### Slide 1: Rationale & Motivation for Recurrent Networks in Fraud Detection
+- **Key Talking Point**: Traditional credit card detection treats each swipe in a vacuum. But fraudsters behave sequentially: they start with micro-transactions ($< \$10$) to test stolen credentials, followed by rapid high-amount withdrawals.
+- **The Recurrent Hypothesis**: An LSTM architecture is uniquely suited to capture temporal momentum, spending velocity, and inter-transaction state transitions that static MLPs ignore.
+
+#### Slide 2: Model Architecture & Gating Mechanics
+- **Key Talking Point**: Walk through the LSTM cell mechanics. Explain how the **Forget Gate ($f_t$)** resets memory when normal shopping patterns resume, while the **Input Gate ($i_t$)** updates the cell state when anomalous feature deviations appear.
+- **Key Talking Point**: Detail the sequence formulation (e.g. sequence windowing of length $L$ or feature-step recurrence across the 30 scaled transaction dimensions).
+
+#### Slide 3: Handling Class Imbalance in Recurrent Training
+- **Key Talking Point**: Explain why standard cross-entropy fails on 99.83% legitimate data (loss gradients are dominated by normal card swipes, resulting in a trivial zero-prediction model).
+- **Key Talking Point**: Detail the use of positive loss re-weighting ($w_{\text{pos}} \approx 518.18$), AdamW optimization with `ReduceLROnPlateau`, and early stopping on validation **PR-AUC** (rather than validation loss).
+
+#### Slide 4: Comparative Trade-Offs (LSTM vs MLP vs 1-D CNN vs Autoencoder)
+- **Versus MLP**: MLP is fast and has zero sequential overhead, but cannot capture temporal dependencies or sequential velocity.
+- **Versus 1-D CNN**: 1-D CNN uses parallel convolutions with weight sharing (fast, strong spatial regularization), whereas LSTM computes step-by-step recurrence (higher latency, sequential dependencies).
+- **Versus Attention Autoencoder**: The Autoencoder is an unsupervised anomaly detector for zero-day attacks; the LSTM is a supervised temporal discriminator requiring labeled data.
+
+#### Slide 5: Expected Viva Defense Questions & Answers for Yash
+1. **Q: "Why choose an LSTM over a standard Simple RNN?"**  
+   *Answer*: Standard RNNs suffer from vanishing and exploding gradients when backpropagating through time due to repeated matrix multiplications. The LSTM’s additive cell state update ($c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t$) acts as a gradient highway, allowing the network to retain memory over extended transaction sequences without vanishing gradients.
+2. **Q: "What are the computational trade-offs of using an LSTM in a real-time banking pipeline?"**  
+   *Answer*: LSTMs process inputs sequentially, meaning recurrence cannot be fully parallelized across the time dimension during inference like 1-D convolutions. In high-frequency credit card streams (thousands of transactions per second), inference latency and memory cell caching per cardholder must be balanced against detection lift.
+3. **Q: "Why is PR-AUC your primary benchmark instead of Accuracy or ROC-AUC?"**  
+   *Answer*: In our dataset, fraud prevalence is only 0.12% on the test set. Accuracy yields 99.88% for a trivial model predicting zero fraud. ROC-AUC is distorted by 42,670 True Negatives, making FPR artificially tiny. PR-AUC pairs Precision with Recall directly, evaluating alert purity and fraud interception without dilution.
