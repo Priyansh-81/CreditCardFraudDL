@@ -14,10 +14,11 @@ import torch
 
 from src.config import config
 from src.preprocessing import run_common_preprocessing, check_dataset_exists
-from src.dataset import create_dataloaders, create_supervised_dataloaders
+from src.dataset import create_dataloaders, create_supervised_dataloaders, create_sequence_dataloaders
 from src.training.train_autoencoder import train_autoencoder
 from src.training.train_mlp import train_mlp, load_trained_mlp, resolve_device
 from src.training.train_cnn1d import train_cnn1d, load_trained_cnn1d
+from src.training.train_lstm import train_lstm, load_trained_lstm
 from src.evaluation.evaluate_autoencoder import evaluate_autoencoder_pipeline, load_trained_autoencoder
 from src.evaluation.evaluate_supervised import (
     predict_dataloader,
@@ -31,7 +32,7 @@ from src.utils import setup_logger
 
 logger = setup_logger("MainPipeline")
 
-IMPLEMENTED_MODELS = ["autoencoder", "mlp", "cnn1d"]
+IMPLEMENTED_MODELS = ["autoencoder", "mlp", "cnn1d", "lstm"]
 
 
 def parse_args():
@@ -269,6 +270,76 @@ def run_cnn1d(preprocessed: dict, stage: str) -> None:
         )
 
 
+def run_lstm(preprocessed: dict, stage: str) -> None:
+    """Run the LSTM sequence classifier pipeline."""
+    t_cfg = config.lstm_training
+    m_cfg = config.lstm_model
+    train_loader, val_loader, test_loader = create_sequence_dataloaders(
+        X_train=preprocessed["X_train"],
+        y_train=preprocessed["y_train"],
+        X_val=preprocessed["X_val"],
+        y_val=preprocessed["y_val"],
+        X_test=preprocessed["X_test"],
+        y_test=preprocessed["y_test"],
+        window_size=m_cfg.sequence_length,
+        batch_size=t_cfg.batch_size,
+        num_workers=t_cfg.num_workers,
+    )
+    device = resolve_device(t_cfg.device)
+
+    if stage in ["train", "all"]:
+        logger.info("=== STEP 2: Training LSTM Sequence Classifier (full labelled training set, pos_weight loss) ===")
+        model, history = train_lstm(train_loader, val_loader, config)
+    elif stage == "evaluate":
+        model = load_trained_lstm(t_cfg.model_save_path, device)
+
+    if stage in ["evaluate", "all"]:
+        logger.info("=== STEP 3: Selecting Threshold on Validation & Evaluating Test Set ===")
+        model = model.to(device)
+        val_probs, y_val = predict_dataloader(model, val_loader, device)
+        threshold_results = find_optimal_threshold(val_probs, y_val, metric=t_cfg.threshold_metric)
+        threshold = threshold_results["optimal_threshold"]
+
+        test_results = evaluate_test_set(model, test_loader, threshold, device, model_name="LSTM Sequence Classifier")
+        test_probs = test_results.pop("test_probs")
+        y_test = test_results.pop("y_test")
+
+        save_supervised_metrics(
+            {
+                "model": "LSTM Sequence Classifier",
+                "architecture": {
+                    "input_dim": m_cfg.input_dim,
+                    "sequence_length": m_cfg.sequence_length,
+                    "hidden_dim": m_cfg.hidden_dim,
+                    "num_layers": m_cfg.num_layers,
+                    "dense_dim": m_cfg.dense_dim,
+                    "dropout": m_cfg.dropout,
+                },
+                "pos_weight": t_cfg.pos_weight,
+                "validation_selection": threshold_results,
+                "test_metrics": test_results,
+            },
+            t_cfg.metrics_save_path,
+        )
+        np.savez_compressed(
+            t_cfg.predictions_save_path,
+            y_test=y_test,
+            test_probs=test_probs,
+            test_predictions=(test_probs >= threshold).astype(int),
+            threshold=threshold,
+        )
+
+        logger.info("=== STEP 4: Error Analysis & Result Visualizations ===")
+        run_error_analysis(
+            preprocessed["X_test"],
+            y_test,
+            test_probs,
+            threshold,
+            scaler=preprocessed.get("scaler"),
+            model_name="LSTM Sequence Classifier",
+        )
+
+
 def main():
     args = parse_args()
 
@@ -280,7 +351,7 @@ def main():
 
     config.preprocessing.raw_data_path = args.raw_path
     config.preprocessing.scaler_type = args.scaler
-    for t_cfg in (config.training, config.mlp_training, config.cnn1d_training):
+    for t_cfg in (config.training, config.mlp_training, config.cnn1d_training, config.lstm_training):
         if args.epochs is not None:
             t_cfg.num_epochs = args.epochs
         if args.batch_size is not None:
@@ -317,6 +388,8 @@ def main():
             run_mlp(preprocessed, args.stage)
         elif model_name == "cnn1d":
             run_cnn1d(preprocessed, args.stage)
+        elif model_name == "lstm":
+            run_lstm(preprocessed, args.stage)
 
     if args.stage in ["evaluate", "all"]:
         logger.info("=== STEP 5: Updating Master Cross-Model Comparison Table & Curves ===")

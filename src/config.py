@@ -149,6 +149,49 @@ class MLPTrainingConfig:
 
 
 @dataclass
+class LSTMArchitectureConfig:
+    """Architectural parameters for the LSTM sequence classifier.
+
+    Two-layer LSTM over temporal windows of consecutive transactions,
+    followed by a Dense -> BatchNorm -> ReLU -> Dropout -> Dense(1) head.
+    Input shape: (B, sequence_length, input_dim).
+    """
+
+    input_dim: int = 30  # Time, V1-V28, Amount
+    sequence_length: int = 10  # Window of 10 consecutive transactions
+    hidden_dim: int = 64  # LSTM hidden state size
+    num_layers: int = 2  # Stacked LSTM layers
+    dense_dim: int = 32  # Intermediate dense layer size
+    dropout: float = 0.2  # Dropout rate
+
+
+@dataclass
+class LSTMTrainingConfig:
+    """Hyperparameters and paths for LSTM training.
+
+    Trained on labelled temporal-window sequences with BCEWithLogitsLoss(pos_weight=518.177).
+    Early stopping and LR scheduling monitor validation PR-AUC.
+    """
+
+    batch_size: int = 512
+    learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
+    num_epochs: int = 40
+    patience: int = 6  # Early stopping patience on validation PR-AUC
+    pos_weight: float = 518.177  # 198980 / 384 (train legit / train fraud)
+    random_seed: int = 42
+    device: str = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    num_workers: int = 0
+    threshold_metric: str = "f1"
+
+    # Paths
+    model_save_path: Path = MODELS_DIR / "best_lstm.pt"
+    metrics_save_path: Path = METRICS_DIR / "lstm_metrics.json"
+    history_save_path: Path = LOGS_DIR / "lstm_training_history.json"
+    predictions_save_path: Path = METRICS_DIR / "lstm_test_predictions.npz"
+
+
+@dataclass
 class CNN1DArchitectureConfig:
     """Architectural parameters for the 1-D CNN classifier.
 
@@ -202,6 +245,8 @@ class ExperimentConfig:
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     mlp_model: MLPArchitectureConfig = field(default_factory=MLPArchitectureConfig)
     mlp_training: MLPTrainingConfig = field(default_factory=MLPTrainingConfig)
+    lstm_model: LSTMArchitectureConfig = field(default_factory=LSTMArchitectureConfig)
+    lstm_training: LSTMTrainingConfig = field(default_factory=LSTMTrainingConfig)
     cnn1d_model: CNN1DArchitectureConfig = field(default_factory=CNN1DArchitectureConfig)
     cnn1d_training: CNN1DTrainingConfig = field(default_factory=CNN1DTrainingConfig)
 

@@ -3,6 +3,7 @@
 from src.training.train_autoencoder import train_autoencoder, EarlyStopping
 from src.training.train_mlp import train_mlp, load_trained_mlp
 from src.training.train_cnn1d import train_cnn1d, load_trained_cnn1d
+from src.training.train_lstm import train_lstm, load_trained_lstm
 
 __all__ = [
     "train_autoencoder",
@@ -11,4 +12,6 @@ __all__ = [
     "load_trained_mlp",
     "train_cnn1d",
     "load_trained_cnn1d",
+    "train_lstm",
+    "load_trained_lstm",
 ]
