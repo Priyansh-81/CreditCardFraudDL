@@ -6,6 +6,7 @@
 | Architecture Family | Model Name | PR-AUC (Primary) | ROC-AUC | F1-Score | Precision | Recall | Optimal Threshold |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Supervised Feed-Forward (MLP) | **MLP Baseline** | **0.7751** | 0.9547 | 0.7907 | 1.0000 | 0.6538 | `0.9993` |
+| Supervised Recurrent (LSTM) | **LSTM Sequence Classifier** | **0.7600** | 0.9747 | 0.7865 | 0.9459 | 0.6731 | `0.9995` |
 | Supervised 1-D CNN | **1-D CNN** | **0.7272** | 0.9686 | 0.7273 | 0.8889 | 0.6154 | `0.9948` |
 | Attention Autoencoder | **Attention Autoencoder** | **0.1978** | 0.9050 | 0.3621 | 0.3281 | 0.4038 | `2.0078` |
 

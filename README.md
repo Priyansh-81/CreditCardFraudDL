@@ -6,7 +6,7 @@
 - **Priyansh Nandan (230953450)** — Common Preprocessing Pipeline & Attention-Based Autoencoder
 - **Pranav Kasliwal (230911284)** — Supervised Feedforward MLP Baseline & Error Profiling
 - **Atharv Sharma (230953210)** — Supervised 1-D CNN Classifier & Master Comparison Harness
-- **Yash** — Supervised Recurrent Neural Network (LSTM) Classifier
+- **Yash (230953292)** — Supervised Recurrent Neural Network (LSTM) Classifier
 
 ---
 
@@ -102,7 +102,7 @@ CreditCardFraudDL/
 | **Priyansh Nandan (230953450)** | **1.** Common preprocessing & chronological split pipeline<br>**2.** Attention-based Autoencoder architecture<br>**3.** Autoencoder training & threshold selection<br>**4.** Output artifacts for final model comparison |
 | **Pranav Kasliwal (230911284)** | **1.** MLP baseline & supervised dataloader/evaluation harness<br>**2.** Error analysis across models<br>**3.** Comparative result visualisations |
 | **Atharv Sharma (230953210)** | **1.** 1-D Convolutional Neural Network (1-D CNN) architecture & training pipeline<br>**2.** Master evaluation harness & consolidated comparison table (`outputs/metrics/comparison_table.md`)<br>**3.** Comparative PR and ROC curve visualizations (`outputs/metrics/comparative_pr_curves.png`, `comparative_roc_curves.png`) |
-| **Yash** | **1.** Long Short-Term Memory (LSTM) recurrent neural network architecture & temporal sequence formulation<br>**2.** Sequential hidden state tracking, memory cell gating & recurrent feature modeling<br>**3.** Supervised LSTM model training with positive class re-weighting (`pos_weight ≈ 518.18`) & validation PR-AUC early stopping<br>**4.** Temporal fraud dependency analysis & comparative benchmarking against Feed-Forward (MLP) and Spatial (1-D CNN) baselines |
+| **Yash (230953292)** | **1.** Long Short-Term Memory (LSTM) recurrent neural network architecture & temporal sequence formulation<br>**2.** Sequential hidden state tracking, memory cell gating & recurrent feature modeling<br>**3.** Supervised LSTM model training with positive class re-weighting (`pos_weight ≈ 518.18`) & validation PR-AUC early stopping<br>**4.** Temporal fraud dependency analysis & comparative benchmarking against Feed-Forward (MLP) and Spatial (1-D CNN) baselines |
 
 ---
 
